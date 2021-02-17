@@ -1,0 +1,109 @@
+#include<SPI.h>
+#include<Ethernet.h>
+#include<Wire.h>
+
+byte mac[]={};
+IPAddress ip();
+EthernetServer server(80);
+uint8_t DEVICE_ADDRESS = 0x60;
+
+
+void setup() {
+
+  Serial.begin(9600);
+  while(!Serial){
+  }
+  Wire.begin();
+  Ethernet.begin(mac,ip);
+  server.begin();
+  Serial.println("server is at");
+  Serial.println(Ethernet.localIP());
+}
+
+//HTML 出力
+void PrintHTML(EthernetClient& client,int v_value){
+  //https レスポンス
+  v_value=analogRead(A0);
+  client.println("HTTP/1.1 200 OK");
+  client.println("Content-type: text/html");
+  client.println();
+
+  //クライアントに表示させるページのデータを渡す
+  client.println("<!DOCTYPE html>");
+  client.println("<html lang=\"ja\">");
+  client.println("<head>");
+  client.println("<meta http-equiv=\"Content-Type\" content=\"text/html;charset=UTF-8\">");
+  client.println("<meta http-equiv=\"Content-Style-Type\" content=\"text/css\">");
+  client.println("<title></title>");
+  client.println("</head>");
+  client.println("<body>");
+  client.println("<p><font size=\"5\">電源電圧遠隔操作サイト</font></p>");
+  client.println("<p><font size=\"4\">*使い方と注意事項*</font></p>");
+  client.println("<p>出力したい電圧値を 0.00~5.00[V]の範囲でフォームに入力し、Enter キーを押してください。</p>");
+
+
+  //post メソッドを使って数値入力フォームを作成
+  client.println("<hr>");
+  client.println("<form method=\"post\" action=\"\">");
+  client.println("出力したい電圧値:<input type=\"number\" step=\"0.01\" min=\"0.00\" max=\"5.00\"name=\"vout\" value=>");
+  client.println("<br>");
+  //client.println("<input type=\"submit\" value=\"送信\">");
+  client.println("<hr>");
+  client.print("<p>測定電圧");client.print(v_value/1023.0* 5.0);
+  client.print("(");client.print(v_value);client.print(")");client.println("[V]</p>");
+  client.println("</body>");
+  client.println("</html>");
+}
+
+void loop() {
+  bool post_check=false;
+  String suuti="";
+  String num="";
+  int vout;
+  int value2;
+  //int value3;
+  //float value4;
+  EthernetClient client=server.available();
+  if(client){
+    while (client.connected()){
+      if(client.available()){
+        suuti=client.readStringUntil(’\n’);
+        //受け取ったデータがpost メソッドで送られてきていたら
+        if(suuti.indexOf("POST")!=-1){
+          post_check=true;
+        }
+        //空行を発見したら
+        if(suuti.length()==1&&suuti[0]==’\r’){
+          if(post_check){
+            suuti=client.readStringUntil(’\n’);
+            num=suuti.substring(5);
+            float data=num.toFloat();
+            if (data>=0.00&&data<5.00){
+              uint16_t value = floor(data/5*4096+0.5);
+              //value2=data*4095.0/5.0;
+              Wire.beginTransmission(DEVICE_ADDRESS);
+              Wire.write((value >> 8) & 0x0F);
+              Wire.write(value);
+              Wire.endTransmission();
+              delay(1000);
+            }
+            if (data==5.00){
+           　　uint16_t value1=4095;
+              Wire.beginTransmission(DEVICE_ADDRESS);
+
+              Wire.write((value1 >> 8) & 0x0F);
+              Wire.write(value1);
+              Wire.endTransmission();
+              delay(1000);
+           　}
+          }
+          PrintHTML(client,vout);//,value2);
+          //client.print("理論値:");client.println(value2/4095.00*5.00);
+          break;
+        }
+      }
+    }
+   }
+   delay(1);
+   client.stop();
+}
