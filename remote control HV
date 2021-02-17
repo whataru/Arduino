@@ -5,8 +5,7 @@
 byte mac[]={};
 IPAddress ip();
 EthernetServer server(80);
-uint8_t DEVICE_ADDRESS = 0x60;
-
+uint8_t DEVICE_ADDRESS = ;
 
 void setup() {
 
@@ -49,8 +48,12 @@ void PrintHTML(EthernetClient& client,int v_value){
   client.println("<br>");
   //client.println("<input type=\"submit\" value=\"送信\">");
   client.println("<hr>");
-  client.print("<p>測定電圧");client.print(v_value/1023.0* 5.0);
-  client.print("(");client.print(v_value);client.print(")");client.println("[V]</p>");
+  client.print("<p>測定電圧");
+  client.print(v_value/1023.0* 5.0);
+  client.print("(");
+  client.print(v_value);
+  client.print(")");
+  client.println("[V]</p>");
   client.println("</body>");
   client.println("</html>");
 }
@@ -98,7 +101,8 @@ void loop() {
            　}
           }
           PrintHTML(client,vout);//,value2);
-          //client.print("理論値:");client.println(value2/4095.00*5.00);
+          //client.print("理論値:");
+          client.println(value2/4095.00*5.00);
           break;
         }
       }
